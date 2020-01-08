@@ -74,7 +74,9 @@ const defaultOptions = {
   //# another feature creep
   // tribute to Netflix Server Side Only React https://twitter.com/NetflixUIE/status/923374215041912833
   // but this will also remove code which registers service worker
-  removeScriptTags: false
+  removeScriptTags: false,
+  // When removeScriptTags is 'true', retain scripts ending in the strings in the following array
+  removeScriptTagsIgnore: []
 };
 
 /**
@@ -229,12 +231,18 @@ const removeStyleTags = ({ page }) =>
     });
   });
 
-const removeScriptTags = ({ page }) =>
-  page.evaluate(() => {
+const removeScriptTags = ({ page, excludedScripts = [] }) =>
+  page.evaluate(excludes => {
     Array.from(document.querySelectorAll("script")).forEach(ell => {
+      const script = ell.src;
+      const matches = excludes.filter((excluded) => script.includes(excluded));
+      if (matches.length > 0) {
+        console.log(`Skipping ${script}`);
+        return;
+      }
       ell.parentElement && ell.parentElement.removeChild(ell);
     });
-  });
+  }, excludedScripts);
 
 const preloadPolyfill = nativeFs.readFileSync(
   `${__dirname}/vendor/preload_polyfill.min.js`,
@@ -514,8 +522,9 @@ const fixParcelChunksIssue = ({
 }) => {
   return page.evaluate(
     (basePath, http2PushManifest, inlineCss) => {
-      const localScripts = Array.from(document.scripts)
-        .filter(x => x.src && x.src.startsWith(basePath))
+      const localScripts = Array.from(document.scripts).filter(
+        x => x.src && x.src.startsWith(basePath)
+      );
 
       const mainRegexp = /main\.[\w]{8}\.js/;
       const mainScript = localScripts.find(x => mainRegexp.test(x.src));
@@ -731,7 +740,11 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
     afterFetch: async ({ page, route, browser, addToQueue }) => {
       const pageUrl = `${basePath}${route}`;
       if (options.removeStyleTags) await removeStyleTags({ page });
-      if (options.removeScriptTags) await removeScriptTags({ page });
+      if (options.removeScriptTags) {
+        const excludedScripts = options.removeScriptTagsIgnore;
+        await removeScriptTags({ page, excludedScripts });
+      }
+
       if (options.removeBlobs) await removeBlobs({ page });
       if (options.inlineCss) {
         const { cssFiles } = await inlineCss({
@@ -840,7 +853,7 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
         );
         routePath = normalizePath(routePath);
         if (routePath !== newPath) {
-          console.log(newPath)
+          console.log(newPath);
           console.log(`💬  in browser redirect (${newPath})`);
           addToQueue(newRoute);
         }

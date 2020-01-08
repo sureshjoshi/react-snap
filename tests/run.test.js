@@ -164,7 +164,7 @@ describe("many pages", () => {
         `/${source}/2/index.html`, // with slash in the end
         `/${source}/3/index.html`, // ignores hash
         `/${source}/4/index.html`, // ignores query
-        `/${source}/5/index.html`, // link rel="alternate"
+        `/${source}/5/index.html` // link rel="alternate"
       ])
     );
   });
@@ -369,6 +369,24 @@ describe("removeScriptTags", () => {
   test("removes all <script>", () => {
     expect(filesCreated()).toEqual(1);
     expect(content(0)).not.toMatch("<script");
+  });
+});
+
+describe("removeScriptTagsIgnored", () => {
+  const source = "tests/examples/other";
+  const include = ["/with-script.html"];
+  const { fs, filesCreated, content } = mockFs();
+  beforeAll(() =>
+    snapRun(fs, {
+      source,
+      include,
+      removeScriptTags: true,
+      removeScriptTagsIgnore: ["main.js"]
+    })
+  );
+  test("removes all <script>", () => {
+    expect(filesCreated()).toEqual(1);
+    expect(content(0)).toMatch("<script");
   });
 });
 

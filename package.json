@@ -29,7 +29,7 @@
   },
   "scripts": {
     "toc": "yarn run markdown-toc -i doc/recipes.md",
-    "test": "jest",
+    "test": "jest --watch",
     "precommit": "prettier --write {*,src/*}.{js,json,css}"
   },
   "bin": {
